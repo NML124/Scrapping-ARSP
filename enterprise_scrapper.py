@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import concurrent.futures
 import os
 import pickle
+from tqdm import tqdm
+
 class EnterpriseScraper:
     BASE_URL = 'https://arsp.cd/registre-des-entreprises-enregistrees/'
     HEADERS = {
@@ -42,23 +44,27 @@ class EnterpriseScraper:
             }, f)
 
     def fetch_main_page(self):
+        print("Loading main page...")
         response = requests.get(self.BASE_URL, headers=self.HEADERS)
         response.raise_for_status()
+        print("Main page loaded.")
         return response.text
 
     def extract_links(self, html):
         # Only extract if links are not already loaded
         if self.links:
             return
+        print("Extracting links from main page...")
         soup = BeautifulSoup(html, "html.parser")
         tds = soup.find('tbody')
         if not tds:
             return
-        for td in tds:
-            a=td.find('a')
-            if str(a)!="-1" and a!=None:
-                link=a['onclick'][22:110]
-                self.links.append("https://arsp.cd/"+link)
+        for td in tqdm(tds, desc="Extracting enterprise links"):
+            a = td.find('a')
+            if str(a) != "-1" and a is not None:
+                link = a['onclick'][22:110]
+                self.links.append("https://arsp.cd/" + link)
+        print(f"Total enterprises found: {len(self.links)}")
 
     def fetch_enterprise_info(self, link):
         res = requests.get(link, headers=self.HEADERS)
@@ -84,7 +90,6 @@ class EnterpriseScraper:
                 return None
             info = self.fetch_enterprise_info(link)
             if info:
-                print(idx)
                 self.data.append(info)
                 self.scraped_links.add(link)
                 self.save_progress()  # Save main progress
@@ -92,9 +97,12 @@ class EnterpriseScraper:
                 self.append_to_temp_csv(info)  # Append to temp CSV
             return info
 
+        print("Scraping enterprise data...")
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                list(executor.map(fetch_and_store, enumerate(self.links, 1)))
+                list(tqdm(executor.map(fetch_and_store, enumerate(self.links, 1)),
+                          total=len(self.links),
+                          desc="Scraping enterprises"))
         except KeyboardInterrupt:
             print("\nScraping interrupted. Saving progress to temporary file...")
             self.save_progress(temp=True)
