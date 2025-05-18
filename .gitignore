@@ -1,0 +1,6 @@
+# Ignore temporary and progress files
+/data/entreprise_temp.csv
+scraper_progress.pkl
+scraper_progress_temp.pkl
+__pycache__/
+*.pyc
