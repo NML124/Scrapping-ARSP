@@ -84,29 +84,37 @@ class EnterpriseScraper:
         main_html = self.fetch_main_page()
         self.extract_links(main_html)
 
+        # Only process links that haven't been scraped
+        to_process = [(idx, link) for idx, link in enumerate(self.links, 1) if link not in self.scraped_links]
+        total = len(self.links)
+        print(f"Scraping enterprise data... ({len(to_process)} to process out of {total})")
+
+        progress_bar = tqdm(total=total, initial=len(self.scraped_links), desc="Scraping enterprises", unit="enterprise")
+
         def fetch_and_store(idx_link):
             idx, link = idx_link
             if link in self.scraped_links:
+                progress_bar.update(1)
                 return None
             info = self.fetch_enterprise_info(link)
             if info:
                 self.data.append(info)
                 self.scraped_links.add(link)
-                self.save_progress()  # Save main progress
-                self.save_progress(temp=True)  # Save temp progress
-                self.append_to_temp_csv(info)  # Append to temp CSV
+                self.save_progress()
+                self.save_progress(temp=True)
+                self.append_to_temp_csv(info)
+            progress_bar.update(1)
             return info
 
-        print("Scraping enterprise data...")
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                list(tqdm(executor.map(fetch_and_store, enumerate(self.links, 1)),
-                          total=len(self.links),
-                          desc="Scraping enterprises"))
+                list(executor.map(fetch_and_store, to_process))
         except KeyboardInterrupt:
             print("\nScraping interrupted. Saving progress to temporary file...")
             self.save_progress(temp=True)
             raise
+        finally:
+            progress_bar.close()
 
     def save_to_csv(self, filename='data/entreprise.csv'):
         with open(filename, 'w', encoding="utf-8") as file:
