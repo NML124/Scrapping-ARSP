@@ -24,7 +24,7 @@ class EnterpriseScraper:
         print(f"Scraping enterprise data... ({len(to_process)} to process out of {total})")
         progress_bar = self.progress_reporter_cls(total=total, initial=len(self.scraped_links), desc="Scraping enterprises")
         def fetch_and_store(idx_link):
-            idx, link = idx_link
+            _, link = idx_link
             if link in self.scraped_links:
                 progress_bar.update(1)
                 return None
@@ -41,10 +41,14 @@ class EnterpriseScraper:
                 list(executor.map(fetch_and_store, to_process))
         except KeyboardInterrupt:
             print("\nScraping interrupted. Saving progress to temporary file...")
-            self.persistence.save_progress(self.links, self.data, self.scraped_links, temp=True)
-            raise
+            self.persistence.save_progress(self.links, self.data, self.scraped_links)
+            
         finally:
             progress_bar.close()
+            if len(self.scraped_links) == total:
+                print("Scraping completed successfully.")
+            else:
+                print("Progress saved")
 
     def save_to_csv(self, filename='data/entreprise.csv'):
         self.persistence.save_to_csv(self.data, filename)
