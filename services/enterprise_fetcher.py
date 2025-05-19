@@ -34,7 +34,11 @@ class EnterpriseFetcher:
         return links
     
     def fetch_enterprise_info(self, link):
-        res = requests.get(link, headers=self.HEADERS)
+        # Use a session for connection pooling (faster for many requests)
+        if not hasattr(self, '_session'):
+            self._session = requests.Session()
+            self._session.headers.update(self.HEADERS)
+        res = self._session.get(link)
         res.raise_for_status()
         soup = BeautifulSoup(res.text, "html.parser")
         table = soup.find('table')
