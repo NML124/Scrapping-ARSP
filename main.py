@@ -1,4 +1,4 @@
-from enterprise_scrapper import EnterpriseScraper
+from scrapper.enterprise_scrapper import EnterpriseScraper
 
 
 if __name__ == "__main__":
