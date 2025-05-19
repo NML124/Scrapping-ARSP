@@ -27,6 +27,5 @@ class PersistenceManager:
         with open(filename, 'w', encoding="utf-8") as file:
             for enterprise in data:
                 file.write("\\".join(enterprise[:9]) + "\n")
-        with open(self.temp_csv_file, 'w', encoding='utf-8') as temp_file:
-            for enterprise in data:
-                temp_file.write("\\".join(enterprise[:9]) + "\n")
+        if os.path.exists(self.temp_csv_file):
+            os.remove(self.temp_csv_file)
