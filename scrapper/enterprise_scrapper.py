@@ -6,7 +6,7 @@ from services.progress_reporter import ProgressReporter
 
 
 class EnterpriseScraper:
-    def __init__(self, persistence=PersistenceManager(progress_file="scraper_progress.pkl",temp_csv_file="data\entreprise_temp.csv",temp_progress_file="scraper_progress_temp.pkl"), fetcher=EnterpriseFetcher(), progress_reporter_cls=ProgressReporter):
+    def __init__(self, persistence=PersistenceManager(progress_file="scraper_progress.pkl",temp_csv_file="data\entreprise_temp.csv"), fetcher=EnterpriseFetcher(), progress_reporter_cls=ProgressReporter):
         self.persistence = persistence
         self.fetcher = fetcher
         progress = self.persistence.load_progress()
@@ -33,7 +33,6 @@ class EnterpriseScraper:
                 self.data.append(info)
                 self.scraped_links.add(link)
                 self.persistence.save_progress(self.links, self.data, self.scraped_links)
-                self.persistence.save_progress(self.links, self.data, self.scraped_links, temp=True)
                 self.persistence.append_to_temp_csv(info)
             progress_bar.update(1)
             return info
