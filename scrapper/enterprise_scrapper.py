@@ -21,9 +21,14 @@ class EnterpriseScraper:
             self.links = self.fetcher.extract_links(main_html)
         to_process = [(idx, link) for idx, link in enumerate(self.links, 1) if link not in self.scraped_links]
         total = len(self.links)
+        
+        max_workers = 50
+        batch_size = 50   
+        counter = 0
         print(f"Scraping enterprise data... ({len(to_process)} to process out of {total})")
         progress_bar = self.progress_reporter_cls(total=total, initial=len(self.scraped_links), desc="Scraping enterprises")
         def fetch_and_store(idx_link):
+            nonlocal counter
             _, link = idx_link
             if link in self.scraped_links:
                 progress_bar.update(1)
@@ -32,18 +37,21 @@ class EnterpriseScraper:
             if info:
                 self.data.append(info)
                 self.scraped_links.add(link)
-                self.persistence.save_progress(self.links, self.data, self.scraped_links)
                 self.persistence.append_to_temp_csv(info)
+                counter += 1
+                if counter % batch_size == 0:
+                    self.persistence.save_progress(self.links, self.data, self.scraped_links)
             progress_bar.update(1)
             return info
         try:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 list(executor.map(fetch_and_store, to_process))
         except KeyboardInterrupt:
             print("\nScraping interrupted. Saving progress to temporary file...")
             self.persistence.save_progress(self.links, self.data, self.scraped_links)
-            
         finally:
+            # Always save at the end in case the last batch wasn't saved
+            self.persistence.save_progress(self.links, self.data, self.scraped_links)
             progress_bar.close()
             if len(self.scraped_links) == total:
                 print("Scraping completed successfully.")
