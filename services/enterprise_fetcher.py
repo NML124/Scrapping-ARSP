@@ -1,4 +1,5 @@
-import requests
+import asyncio
+import aiohttp
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
@@ -11,13 +12,15 @@ class EnterpriseFetcher:
             'Chrome/50.0.2661.102 Safari/537.36'
         )
     }
-    def fetch_main_page(self):
+    async def fetch_main_page(self):
         print("Loading main page...")
-        response = requests.get(self.BASE_URL, headers=self.HEADERS)
-        response.raise_for_status()
+        async with aiohttp.ClientSession(headers=self.HEADERS) as session:
+            async with session.get(self.BASE_URL) as response:
+                response.raise_for_status()
+                text = await response.text()
         print("Main page loaded.")
-        return response.text
-    
+        return text
+
     def extract_links(self, html):
         print("Extracting links from main page...")
         soup = BeautifulSoup(html, "html.parser")
@@ -32,15 +35,12 @@ class EnterpriseFetcher:
                 links.append("https://arsp.cd/" + link)
         print(f"Total enterprises found: {len(links)}")
         return links
-    
-    def fetch_enterprise_info(self, link):
-        # Use a session for connection pooling (faster for many requests)
-        if not hasattr(self, '_session'):
-            self._session = requests.Session()
-            self._session.headers.update(self.HEADERS)
-        res = self._session.get(link)
-        res.raise_for_status()
-        soup = BeautifulSoup(res.text, "html.parser")
+
+    async def fetch_enterprise_info(self, session, link):
+        async with session.get(link) as res:
+            res.raise_for_status()
+            text = await res.text()
+        soup = BeautifulSoup(text, "html.parser")
         table = soup.find('table')
         if not table:
             return []
